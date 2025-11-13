@@ -1,0 +1,24 @@
+{
+  "name": "scantotrust",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
+    "express": "^5.1.0",
+    "js-sha256": "^0.11.1",
+    "pg": "^8.16.3",
+    "qrcode": "^1.5.4",
+    "solc": "^0.8.21"
+  },
+  "devDependencies": {
+    "hardhat": "^3.0.10"
+  }
+}

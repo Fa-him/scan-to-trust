@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Scan-to-Trust • Timeline</title>
+<meta name="theme-color" content="#0b1220" />
+<style>
+  :root{
+    --bg:#0b1220; --card:#101a2b; --line:#22314d; --muted:#8da2c5; --text:#e7eefc;
+    --brand:#3b82f6; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --chip:#0f172a;
+  }
+  @media(prefers-color-scheme:light){
+    :root{ --bg:#f6f9ff; --card:#ffffff; --line:#e2e8f0; --text:#0b1220; --muted:#475569; --chip:#f1f5f9 }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1000px;margin:28px auto;padding:0 16px}
+  header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+  .brand{font-weight:800;letter-spacing:.2px}
+  .id{color:var(--muted);font-family:ui-monospace,Menlo,Consolas,monospace}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 8px 20px rgba(0,0,0,.15)}
+  .grid{display:grid;gap:16px;grid-template-columns: 1fr 1fr}
+  @media(max-width:900px){ .grid{grid-template-columns:1fr} }
+  h2,h3{margin:0 0 8px}
+  .kvs{display:grid;gap:8px}
+  .kv{display:flex;gap:12px}
+  .k{width:140px;color:var(--muted)}
+  .v{flex:1}
+  .badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;background:var(--chip);color:var(--muted)}
+  .badge.ok{background:rgba(34,197,94,.12);border-color:#14532d;color:#86efac}
+  .badge.warn{background:rgba(245,158,11,.12);border-color:#7c3a00;color:#fbbf24}
+  .badge.err{background:rgba(239,68,68,.12);border-color:#7f1d1d;color:#fca5a5}
+  .btn{display:inline-flex;align-items:center;gap:10px;background:var(--brand);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+  .btn:disabled{opacity:.7;cursor:not-allowed}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .events{margin:0;padding:0;list-style:none}
+  .ev{border-left:3px solid var(--line);padding:12px 12px 12px 16px;margin-left:4px}
+  .ev + .ev{margin-top:8px}
+  .evhead{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+  .role{font-weight:700}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:12px;color:var(--muted);background:var(--chip)}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  footer{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+  .toprow{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .search{margin-left:auto;display:flex;gap:8px}
+  input[type="search"]{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:transparent;color:var(--text)}
+  .hr{height:1px;background:var(--line);margin:12px 0}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="brand">Scan-to-Trust</div>
+        <div class="small muted">Product journey & on-chain anchoring</div>
+      </div>
+      <div id="anchorBadge" class="badge">loading…</div>
+    </header>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="toprow">
+        <div class="id" id="batchId">Batch —</div>
+        <button id="copyLink" class="btn" title="Copy page link">Copy Link</button>
+        <div class="search">
+          <input id="filter" type="search" placeholder="Filter events (role, company, location…)" />
+        </div>
+      </div>
+      <div class="hr"></div>
+      <div class="grid">
+        <div>
+          <h3>Product</h3>
+          <div class="kvs">
+            <div class="kv"><div class="k">Name</div><div class="v" id="p_name">—</div></div>
+            <div class="kv"><div class="k">Price</div><div class="v" id="p_price">—</div></div>
+            <div class="kv"><div class="k">Latest Anchor</div><div class="v small" id="p_anchor">—</div></div>
+          </div>
+        </div>
+        <div>
+          <h3>Quick Actions</h3>
+          <div class="kvs">
+            <div class="kv"><div class="k">QR for this page</div><div class="v"><canvas id="qr" width="120" height="120"></canvas></div></div>
+            <div class="kv"><div class="k">Raw JSON</div><div class="v"><button id="showJson" class="btn">Open JSON</button></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Timeline</h3>
+      <ul id="events" class="events"></ul>
+      <div id="empty" class="muted">No events yet.</div>
+    </div>
+
+    <footer>© Scan-to-Trust</footer>
+  </div>
+
+<script>
+/* ---------- tiny QR (no external deps): draws a basic QR-like placeholder for demo
+   For a real QR, you can reuse server’s /qr route as an <img>:
+   document.getElementById('qrImg').src = '/qr/' + encodeURIComponent(batchId);
+*/
+function drawMiniQR(canvas, text) {
+  const ctx = canvas.getContext('2d');
+  const s = canvas.width;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,s,s);
+  ctx.fillStyle = '#000';
+  // naive pseudo-pattern based on hash of text
+  let h=0; for (let i=0;i<text.length;i++) h=(h*31+text.charCodeAt(i))>>>0;
+  const n=21; const cell = Math.floor(s/n);
+  for (let y=0;y<n;y++){
+    for (let x=0;x<n;x++){
+      const bit = ((h >>> ((x+y)%31)) & 1) ^ ((x*y + h) % 3 === 0 ? 1:0);
+      if (bit) ctx.fillRect(x*cell, y*cell, cell-1, cell-1);
+    }
+  }
+  // finder-like corners
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 3;
+  const f = (xx,yy)=>{ ctx.strokeRect(xx,yy, cell*6, cell*6); ctx.strokeRect(xx+cell,yy+cell, cell*4, cell*4) };
+  f(cell,cell); f(s-cell*7,cell); f(cell,s-cell*7);
+}
+
+const $ = (id)=>document.getElementById(id);
+const fmtBDT = n => (isFinite(n) ? new Intl.NumberFormat('en-BD',{style:'currency',currency:'BDT'}).format(n) : '—');
+const params = location.pathname.split('/');  // /view/:batchId
+const batchId = decodeURIComponent(params[2] || '');
+
+$('batchId').textContent = 'Batch ' + (batchId || '—');
+
+$('copyLink').onclick = async () => {
+  await navigator.clipboard.writeText(location.href);
+  $('copyLink').textContent = 'Copied ✓';
+  setTimeout(()=> $('copyLink').textContent = 'Copy Link', 1200);
+};
+
+$('showJson').onclick = () => {
+  window.open('/timeline/' + encodeURIComponent(batchId), '_blank');
+};
+
+$('filter').addEventListener('input', () => render(lastData));
+
+let lastData = null;
+
+function render(data){
+  lastData = data;
+  const ev = (data?.events)||[];
+  const q = $('filter').value.trim().toLowerCase();
+
+  // product block
+  $('p_name').textContent = data?.batch?.product_name ?? '—';
+  $('p_price').textContent = fmtBDT(Number(data?.batch?.product_price ?? 0));
+  if (data?.anchored) {
+    $('anchorBadge').className = 'badge ok';
+    $('anchorBadge').textContent = 'Anchored ✓';
+    $('p_anchor').textContent = `Day ${data.anchored_day} • Root ${data.root} • tx ${data.tx_hash || '—'}`;
+  } else {
+    $('anchorBadge').className = 'badge warn';
+    $('anchorBadge').textContent = 'Not anchored';
+    $('p_anchor').textContent = `Day ${data?.anchored_day || '—'} not anchored yet`;
+  }
+
+  // events
+  const holder = $('events'); holder.innerHTML = '';
+  let shown = 0;
+  for (const e of ev){
+    const when = new Date(e.occurred_at || e.recorded_at).toLocaleString();
+    const who = [e.party_name, e.party_company].filter(Boolean).join(' @ ');
+    const contact = e.party_contact ? ` (${e.party_contact})` : '';
+    const line = [
+      e.role || 'event',
+      e.location || '',
+      who || '',
+      e.party_contact || '',
+      e.doc_hash || '',
+      when
+    ].join(' ').toLowerCase();
+
+    if (q && !line.includes(q)) continue;
+
+    const li = document.createElement('li'); li.className = 'ev';
+    li.innerHTML = `
+      <div class="evhead">
+        <span class="role">${e.role}</span>
+        ${e.location ? `<span class="chip">📍 ${e.location}</span>` : ''}
+        ${who ? `<span class="chip">👤 ${who}${contact}</span>` : ''}
+        ${e.doc_hash ? `<span class="chip mono">doc ${e.doc_hash.slice(0,12)}…</span>` : ''}
+        <span class="chip small">🕒 ${when}</span>
+      </div>
+      <div class="small mono muted">hash ${e.event_hash}</div>
+    `;
+    holder.appendChild(li);
+    shown++;
+  }
+  $('empty').style.display = shown ? 'none':'block';
+}
+
+async function main(){
+  if(!batchId){ render(null); return; }
+  // draw a QR for this pretty page URL (or swap to <img src="/qr/:id">)
+  drawMiniQR($('qr'), location.href);
+  try{
+    const r = await fetch('/timeline/' + encodeURIComponent(batchId));
+    if(!r.ok){ $('anchorBadge').className='badge err'; $('anchorBadge').textContent='Error loading'; render(null); return; }
+    const data = await r.json();
+    render(data);
+  }catch{
+    $('anchorBadge').className='badge err'; $('anchorBadge').textContent='Network error';
+  }
+}
+main();
+</script>
+</body>
+</html>

@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Scan-to-Trust</title>
+<button id="btnLang" class="pill" style="margin-left:8px">বাংলা</button>
+
+<style>
+  :root{
+    --bg:#f7fafc; --card:#ffffff; --ink:#0b1220; --muted:#4b5563; --line:#e5e7eb;
+    --primary:#2563eb; --primary-ink:#ffffff; --accent:#10b981; --warn:#f59e0b; --danger:#ef4444;
+    --input:#f9fafb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1120px;margin:28px auto;padding:0 16px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .brand{font-weight:800;font-size:20px;letter-spacing:.2px}
+  .chip{display:inline-flex;align-items:center;gap:8px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+  .card{grid-column:span 6;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 6px 16px rgba(0,0,0,.06)}
+  .card.wide{grid-column:span 12}
+  h3{margin:0 0 10px 0;font-size:18px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 6px}
+  input,select,textarea{
+    width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--input);
+    color:var(--ink);font-size:15px;outline:none;
+  }
+  textarea{min-height:84px;resize:vertical}
+  .row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  .btn{display:inline-flex;align-items:center;gap:8px;background:var(--primary);color:var(--primary-ink);border:0;border-radius:10px;padding:11px 14px;font-weight:700;cursor:pointer}
+  .btn.dim{background:#374151;color:#fff}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .badge{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;color:var(--muted)}
+  .badge.ok{border-color:#16a34a;background:#ecfdf5;color:#166534}
+  .badge.warn{border-color:#c2410c;background:#fffbeb;color:#9a3412}
+  pre{background:#f9fafb;border:1px solid var(--line);border-radius:10px;padding:12px;max-height:260px;overflow:auto}
+  .kv{display:grid;gap:6px;font-size:14px}
+  .kv div{display:flex;gap:8px}
+  .k{width:160px;color:var(--muted)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .qr{width:160px;height:160px;object-fit:contain;border:1px solid var(--line);border-radius:12px;background:#fff}
+  ol.list{margin:10px 0 0 18px;padding:0}
+  ol.list li{margin:6px 0}
+  .muted{color:var(--muted)}
+  .pair{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:start}
+  .tools{display:flex;gap:8px;align-items:center}
+  footer{margin:16px 0;color:var(--muted);font-size:12px}
+  @media (max-width:880px){.card{grid-column:span 12}.row{grid-template-columns:1fr}.pair{grid-template-columns:1fr}}
+  a.link{color:#1d4ed8;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">Scan-to-Trust</div>
+    <div id="mode" class="chip">admin</div>
+  </header>
+
+  <!-- ADMIN SURFACE -->
+  <div id="admin" class="grid">
+    <!-- Create Batch -->
+    <div class="card">
+      <h3>Create Batch</h3>
+      <div class="row">
+        <div><label>Batch ID</label><input id="c_id" placeholder="BATCH-001"></div>
+        <div><label>Product</label><input id="c_name" placeholder="Premium Tea"></div>
+      </div>
+      <div class="row">
+        <div><label>Price (BDT)</label><input id="c_price" type="number" step="0.01" min="0" placeholder="350.00"></div>
+        <div><label>Producer Location</label><input id="c_loc" placeholder="Srimangal"></div>
+      </div>
+      <div class="row">
+        <div><label>Producer Name</label><input id="c_pname" placeholder="Mr. Karim"></div>
+        <div><label>Producer Company</label><input id="c_pco" placeholder="Karim Tea Co."></div>
+      </div>
+      <div class="row">
+        <div><label>Producer Phone</label><input id="c_pphone" placeholder="+8801xxxxxxxxx"></div>
+        <div><label>Doc text (auto-hash)</label><input id="c_doct" placeholder="optional description/metadata"></div>
+      </div>
+      <div class="row">
+        <div><label>Producer ID (owner_id)</label><input id="c_oid" placeholder="e.g., P-1007"></div>
+        <div><label>Producer Code (owner_code)</label><input id="c_ocode" placeholder="e.g., K7Q9Z2"></div>
+      </div>
+      <div class="tools" style="margin-top:10px">
+        <button class="btn" id="btnCreate">Create & QR</button>
+        <span id="createBadge" class="badge">ready</span>
+      </div>
+      <div class="pair" style="margin-top:12px">
+        <img id="qr" class="qr" alt="QR">
+        <pre id="outCreate" class="mono">Awaiting…</pre>
+      </div>
+    </div>
+
+    <!-- Authorize Next Handoff -->
+    <div class="card">
+      <h3>Authorize Next Handoff</h3>
+      <div class="row">
+        <div><label>Batch ID</label><input id="a_batch" placeholder="BATCH-001"></div>
+        <div><label>Owner ID (current)</label><input id="a_owner_id" placeholder="your owner_id"></div>
+      </div>
+      <div class="row">
+        <div><label>Owner Code (current)</label><input id="a_owner_code" placeholder="your owner_code"></div>
+        <div><label>Next Role</label>
+          <select id="a_next_role">
+            <option>manufacturer</option>
+            <option>distributor</option>
+            <option>retailer</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Next Owner ID</label><input id="a_next_id" placeholder="e.g., M-204"></div>
+        <div><label>Next Owner Name</label><input id="a_next_name" placeholder="Recipient person/name"></div>
+      </div>
+      <div class="row">
+        <div><label>Valid days</label><input id="a_days" type="number" min="1" value="14"></div>
+        <div><label>Not before (optional)</label><input id="a_nb" type="datetime-local"></div>
+      </div>
+      <div class="tools" style="margin-top:8px">
+        <button class="btn dim" id="btnAuth">Authorize</button>
+      </div>
+      <pre id="outAuth" class="mono">Awaiting…</pre>
+    </div>
+
+    <!-- Guarded Handoff -->
+    <div class="card">
+      <h3>Add Handoff (Guarded)</h3>
+      <div class="row">
+        <div><label>Batch ID</label><input id="h_batch" placeholder="BATCH-001"></div>
+        <div><label>Your Role</label>
+          <select id="h_role">
+            <option>manufacturer</option>
+            <option>distributor</option>
+            <option>retailer</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>One-time Code (from authorizer)</label><input id="h_code" placeholder="e.g., 7JX9QK"></div>
+        <div><label>Your Owner ID</label><input id="h_id" placeholder="your owner_id"></div>
+      </div>
+      <div class="row">
+        <div><label>Your Name</label><input id="h_name" placeholder="Ms. Ayesha"></div>
+        <div><label>Company</label><input id="h_co" placeholder="Ayesha Distrib."></div>
+      </div>
+      <div class="row">
+        <div><label>Phone</label><input id="h_phone" placeholder="+8801xxxxxxxxx"></div>
+        <div><label>Location</label><input id="h_loc" placeholder="Gazipur"></div>
+      </div>
+      <div class="row">
+        <div><label>Sale Price (BDT)</label><input id="h_price" type="number" step="0.01" min="0" placeholder="e.g., 480.00"></div>
+        <div><label>Doc text (auto-hash)</label><input id="h_doct" placeholder="optional notes/docs text"></div>
+      </div>
+      <div class="tools" style="margin-top:8px">
+        <button class="btn" id="btnHandoff">Add Event</button>
+      </div>
+      <pre id="outHandoff" class="mono">Awaiting…</pre>
+    </div>
+
+    <!-- Daily Anchor -->
+    <div class="card">
+      <h3>Daily Anchor (Merkle)</h3>
+      <label>Day (YYYY-MM-DD, optional)</label>
+      <input id="m_day" placeholder="">
+      <div class="tools" style="margin-top:10px">
+        <button class="btn ghost" id="btnMerkle">Compute & Save Root</button>
+      </div>
+      <pre id="outMerkle" class="mono">Computes today’s Merkle root of events and stores it; if CONTRACT_ADDRESS is set, also writes on-chain.</pre>
+    </div>
+
+    <!-- Admin Timeline -->
+    <div class="card wide">
+      <h3>Customer View — Timeline</h3>
+      <div class="row">
+        <div><label>Batch ID</label><input id="t_id" placeholder="BATCH-001"></div>
+        <div style="display:flex;align-items:end;gap:10px">
+          <button class="btn" id="btnTimeline">Fetch Timeline</button>
+          <span id="t_badge" class="badge">no data</span>
+          <a id="t_link" class="btn ghost" target="_blank">Open Public Page</a>
+        </div>
+      </div>
+      <div id="t_info" class="kv" style="display:none;margin-top:8px">
+        <div><div class="k">Product</div><div id="ti_prod"></div></div>
+        <div><div class="k">Batch</div><div class="mono" id="ti_id"></div></div>
+        <div><div class="k">Current Owner</div><div id="ti_owner"></div></div>
+        <div><div class="k">Current Price</div><div id="ti_price"></div></div>
+        <div><div class="k">Anchoring</div><div id="ti_anchor"></div></div>
+      </div>
+      <ol id="t_events" class="list"></ol>
+      <pre id="t_raw" class="mono" style="margin-top:10px">Awaiting…</pre>
+    </div>
+  </div>
+
+  <!-- PUBLIC VIEWER (used at /view/:id) -->
+  <div id="viewer" style="display:none">
+    <div class="card wide">
+      <h3>Product Journey</h3>
+      <div class="row">
+        <div><label>Batch ID</label><input id="v_id" placeholder="BATCH-001"></div>
+        <div style="display:flex;gap:8px;align-items:end">
+          <button class="btn" id="v_btn">Open</button>
+          <a id="v_json" class="btn ghost" href="#" target="_blank">Open JSON</a>
+          <button class="btn dim" id="v_copy">Copy Share Link</button>
+        </div>
+      </div>
+      <div id="v_info" class="kv" style="display:none;margin-top:8px">
+        <div><div class="k">Product</div><div id="vp"></div></div>
+        <div><div class="k">Batch</div><div class="mono" id="vb"></div></div>
+        <div><div class="k">Current Owner</div><div id="vo"></div></div>
+        <div><div class="k">Current Price</div><div id="vpr"></div></div>
+        <div><div class="k">Anchor</div><div id="va"></div></div>
+      </div>
+      <ol id="v_list" class="list"></ol>
+    </div>
+  </div>
+
+  <footer>© Scan-to-Trust demo</footer>
+</div>
+<script>
+// ===== Lightweight i18n (EN ⇄ BN) — no HTML rewiring needed =====
+(function () {
+  // Dictionary: exact string match. Add more entries if you add new labels.
+  const dict = {
+    en: {
+      // cards / headings
+      "Create Batch":"Create Batch","Authorize Next Handoff":"Authorize Next Handoff",
+      "Add Handoff (Guarded)":"Add Handoff (Guarded)","Daily Anchor (Merkle)":"Daily Anchor (Merkle)",
+      "Customer View — Timeline":"Customer View — Timeline","Product Journey":"Product Journey",
+      // field labels
+      "Batch ID":"Batch ID","Product":"Product","Price (BDT)":"Price (BDT)",
+      "Producer Location":"Producer Location","Producer Name":"Producer Name","Producer Company":"Producer Company",
+      "Producer Contact":"Producer Contact","Doc text (auto-hash)":"Doc text (auto-hash)",
+      "Producer API key":"Producer API key","Owner API key":"Owner API key",
+      "Owner ID":"Owner ID","Owner Code":"Owner Code",
+      "Next Role":"Next Role","Next Name":"Next Name","Valid days":"Valid days","Not before (optional)":"Not before (optional)",
+      "Receiver Role":"Receiver Role","Receiver API key":"Receiver API key","One-time Code":"One-time Code",
+      "Receiver Name":"Receiver Name","Company":"Company","Contact":"Contact","Location":"Location",
+      "Day (YYYY-MM-DD, optional)":"Day (YYYY-MM-DD, optional)",
+      // buttons
+      "Create & QR":"Create & QR","Authorize":"Authorize","Add Event":"Add Event","Compute & Save Root":"Compute & Save Root",
+      "Fetch Timeline":"Fetch Timeline","Open":"Open","Open JSON":"Open JSON","Copy Link":"Copy Link",
+      // badges / status
+      "ready":"ready","done":"done","error":"error","no data":"no data",
+      // info panel / viewer
+      "Product":"Product","Batch":"Batch","Price":"Price","Anchoring":"Anchoring","Anchor":"Anchor",
+      // placeholders (ensure exact match)
+      "BATCH-001":"BATCH-001","Premium Tea":"Premium Tea","350.00":"350.00","Dhaka":"Dhaka","Mr. Karim":"Mr. Karim",
+      "Karim Tea Co.":"Karim Tea Co.","+8801...":"+8801...","any description or metadata":"any description or metadata",
+      "current owner key":"current owner key","Recipient person/name":"Recipient person/name",
+      "14":"14","Ms. Ayesha":"Ms. Ayesha","Ayesha Distrib.":"Ayesha Distrib.","role key":"role key","e.g., 7JX9QK":"e.g., 7JX9QK",
+      "optional notes/docs text":"optional notes/docs text"
+    },
+    bn: {
+      "Create Batch":"ব্যাচ তৈরি","Authorize Next Handoff":"পরবর্তী হস্তান্তর অনুমোদন",
+      "Add Handoff (Guarded)":"হস্তান্তর যোগ করুন (নিরাপদ)","Daily Anchor (Merkle)":"দৈনিক অ্যাঙ্কর (মার্কল)",
+      "Customer View — Timeline":"গ্রাহক ভিউ — টাইমলাইন","Product Journey":"পণ্যের যাত্রাপথ",
+
+      "Batch ID":"ব্যাচ আইডি","Product":"পণ্য","Price (BDT)":"মূল্য (টাকা)",
+      "Producer Location":"উৎপাদক অবস্থান","Producer Name":"উৎপাদকের নাম","Producer Company":"উৎপাদকের প্রতিষ্ঠান",
+      "Producer Contact":"উৎপাদকের যোগাযোগ","Doc text (auto-hash)":"ডক টেক্সট (স্বয়ংক্রিয় হ্যাশ)",
+      "Producer API key":"প্রডিউসার এপিআই কী","Owner API key":"মালিকের এপিআই কী",
+      "Owner ID":"মালিকের আইডি","Owner Code":"মালিকের কোড",
+      "Next Role":"পরবর্তী ভূমিকা","Next Name":"পরবর্তী নাম","Valid days":"বৈধ দিন","Not before (optional)":"শুরু সময় (ঐচ্ছিক)",
+      "Receiver Role":"গ্রহণকারীর ভূমিকা","Receiver API key":"গ্রহণকারীর এপিআই কী","One-time Code":"একবারের কোড",
+      "Receiver Name":"গ্রহণকারীর নাম","Company":"প্রতিষ্ঠান","Contact":"যোগাযোগ","Location":"অবস্থান",
+      "Day (YYYY-MM-DD, optional)":"তারিখ (YYYY-MM-DD, ঐচ্ছিক)",
+
+      "Create & QR":"তৈরি করুন ও কিউআর","Authorize":"অনুমোদন","Add Event":"ইভেন্ট যোগ করুন","Compute & Save Root":"রুট হিসাব ও সংরক্ষণ",
+      "Fetch Timeline":"টাইমলাইন দেখুন","Open":"খুলুন","Open JSON":"JSON খুলুন","Copy Link":"লিংক কপি",
+
+      "ready":"প্রস্তুত","done":"সম্পন্ন","error":"ত্রুটি","no data":"তথ্য নেই",
+
+      "Product":"পণ্য","Batch":"ব্যাচ","Price":"মূল্য","Anchoring":"অ্যাঙ্করিং","Anchor":"অ্যাঙ্কর",
+
+      "BATCH-001":"BATCH-001","Premium Tea":"প্রিমিয়াম চা","350.00":"৩৫০.০০","Dhaka":"ঢাকা","Mr. Karim":"মি. করিম",
+      "Karim Tea Co.":"করিম টি কো.","+8801...":"+৮৮০১...","any description or metadata":"যেকোনো বর্ণনা বা মেটাডাটা",
+      "current owner key":"বর্তমান মালিকের কী","Recipient person/name":"প্রাপকের নাম",
+      "14":"১৪","Ms. Ayesha":"মিস আয়েশা","Ayesha Distrib.":"আয়েশা ডিস্ট্রিবিউশন","role key":"ভূমিকার কী","e.g., 7JX9QK":"যেমন, 7JX9QK",
+      "optional notes/docs text":"ঐচ্ছিক নোট / ডক টেক্সট"
+    }
+  };
+
+  // Which attributes to translate
+  const ATTRS = ["placeholder", "value"]; // we’ll try these for inputs
+  const TEXT = true; // translate element textContent too
+
+  function applyLang(lang){
+    const map = dict[lang];
+    if(!map) return;
+    // Text nodes (simple labels)
+    if (TEXT){
+      document.querySelectorAll('body *:not(script):not(style)').forEach(el=>{
+        // skip empty or dynamic content blocks (lists/JSON panes get refreshed separately by your app)
+        const txt = (el.childNodes.length===1 && el.childNodes[0].nodeType===Node.TEXT_NODE) ? el.textContent.trim() : null;
+        if(!txt) return;
+        if(map[txt]) el.textContent = map[txt];
+      });
+    }
+    // Attributes (placeholders/values)
+    document.querySelectorAll('input,textarea,button,select').forEach(el=>{
+      ATTRS.forEach(a=>{
+        const v = el.getAttribute(a);
+        if(v && dict[lang][v]) el.setAttribute(a, dict[lang][v]);
+      });
+      // Also translate the visible label of buttons that use their text
+      if (el.tagName==='BUTTON') {
+        const t = el.textContent.trim();
+        if(dict[lang][t]) el.textContent = dict[lang][t];
+      }
+    });
+    // Badge pills that may be present at load
+    document.querySelectorAll('.badge,.pill,.link').forEach(el=>{
+      const t = el.textContent.trim();
+      if(dict[lang][t]) el.textContent = dict[lang][t];
+    });
+
+    // Update the toggle button label
+    const btn = document.getElementById('btnLang');
+    if (btn) btn.textContent = (lang==='en') ? 'বাংলা' : 'English';
+    localStorage.setItem('lang', lang);
+  }
+
+  // init
+  const userLang = localStorage.getItem('lang') || 'en';
+  // We run a tiny delay so the base DOM labels exist before translation;
+  // your dynamic content (like timelines) stays as-is.
+  window.addEventListener('DOMContentLoaded', ()=>applyLang(userLang));
+
+  // toggle handler
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const btn = document.getElementById('btnLang');
+    if(!btn) return;
+    btn.addEventListener('click', ()=>{
+      const cur = localStorage.getItem('lang') || 'en';
+      const next = (cur==='en') ? 'bn' : 'en';
+      applyLang(next);
+    });
+  });
+})();
+</script>
+
+
+<script>
+  // Helpers
+  const $ = id => document.getElementById(id);
+  const moneyBDT = n => (isFinite(n) ? new Intl.NumberFormat('en-BD',{style:'currency',currency:'BDT',maximumFractionDigits:2}).format(n) : '—');
+  async function jpost(url, body, headers={}) {
+    const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json', ...headers}, body: JSON.stringify(body||{}) });
+    const t = await r.text(); let j; try { j = JSON.parse(t); } catch { j = { raw: t }; }
+    if (!r.ok) throw new Error((j && j.error) || t); return j;
+  }
+  async function jget(url) {
+    const r = await fetch(url); const t = await r.text(); let j; try { j = JSON.parse(t); } catch { j = { raw: t }; }
+    if (!r.ok) throw new Error((j && j.error) || t); return j;
+  }
+  const safe = (v, alt='') => (v===undefined||v===null||v==='') ? alt : v;
+
+  // Create Batch
+  $('btnCreate').onclick = async () => {
+    const id = $('c_id').value.trim(); if (!id) return alert('Batch ID required');
+    $('createBadge').textContent='working…'; $('createBadge').className='badge';
+    try {
+      const res = await jpost('/batch/create', {
+        id,
+        product_name: $('c_name').value.trim(),
+        product_price: parseFloat($('c_price').value || 0),
+        location: $('c_loc').value.trim(),
+        producer_name: $('c_pname').value.trim(),
+        producer_company: $('c_pco').value.trim(),
+        producer_phone: $('c_pphone').value.trim(),
+        owner_id: $('c_oid').value.trim(),
+        owner_code: $('c_ocode').value.trim(),
+        doc_text: $('c_doct').value.trim()
+      });
+      $('qr').src = `/qr/${encodeURIComponent(id)}`;
+      $('outCreate').textContent = JSON.stringify(res, null, 2);
+      $('createBadge').textContent='done'; $('createBadge').className='badge ok';
+    } catch (e) {
+      $('outCreate').textContent = e.message;
+      $('createBadge').textContent='error'; $('createBadge').className='badge warn';
+    }
+  };
+
+  // Authorize Next Handoff
+  $('btnAuth').onclick = async () => {
+    try {
+      const res = await jpost('/handoff/authorize', {
+        batch_id: $('a_batch').value.trim(),
+        next_owner_id: $('a_next_id').value.trim(),
+        next_owner_name: $('a_next_name').value.trim(),
+        next_role: $('a_next_role').value,
+        valid_days: Number($('a_days').value || 14),
+        not_before: $('a_nb').value || null
+      }, {
+        'x-owner-id': $('a_owner_id').value.trim(),
+        'x-owner-code': $('a_owner_code').value.trim()
+      });
+      $('outAuth').textContent = JSON.stringify(res, null, 2);
+    } catch (e) {
+      $('outAuth').textContent = e.message;
+    }
+  };
+
+  // Guarded Handoff
+  $('btnHandoff').onclick = async () => {
+    try {
+      const res = await jpost('/handoff', {
+        batch_id: $('h_batch').value.trim(),
+        role: $('h_role').value,
+        code: $('h_code').value.trim(),
+        actor_id: $('h_id').value.trim(),
+        actor_name: $('h_name').value.trim(),
+        actor_company: $('h_co').value.trim(),
+        actor_phone: $('h_phone').value.trim(),
+        location: $('h_loc').value.trim(),
+        price: parseFloat($('h_price').value || 0),
+        doc_text: $('h_doct').value.trim()
+      });
+      $('outHandoff').textContent = JSON.stringify(res, null, 2);
+    } catch (e) {
+      $('outHandoff').textContent = e.message;
+    }
+  };
+
+  // Render helpers (show phone numbers!)
+  function renderEvents(listEl, events) {
+    listEl.innerHTML = (events || []).map(e => {
+      const when = new Date(e.occurred_at || e.recorded_at).toLocaleString();
+      const name = safe(e.actor_name);
+      const comp = safe(e.actor_company);
+      const phone = safe(e.actor_phone || e.actor_contact); // support either field
+      const loc = safe(e.location);
+      const price = (e.actor_price !== undefined && e.actor_price !== null) ? moneyBDT(Number(e.actor_price)) : '';
+      const doc = e.doc_hash ? ` • doc ${e.doc_hash.slice(0,10)}…` : '';
+      const who = (name || comp || phone) ? ` (${[name, comp, phone].filter(Boolean).join(', ')})` : '';
+      const tail = [loc ? `@ ${loc}` : '', price ? ` • ${price}` : ''].join('');
+      return `<li>${when} — ${e.role}${who}${tail}${doc}</li>`;
+    }).join('') || '<li class="muted">No events yet</li>';
+  }
+
+  // Admin Timeline
+  $('btnTimeline').onclick = async () => {
+    const id = $('t_id').value.trim(); if (!id) return alert('Batch ID required');
+    $('t_badge').textContent='loading…'; $('t_badge').className='badge';
+    try {
+      const r = await jget(`/timeline/${encodeURIComponent(id)}`);
+      $('t_raw').textContent = JSON.stringify(r, null, 2);
+
+      $('t_info').style.display='grid';
+      $('ti_prod').textContent = safe(r.batch?.product_name, '—');
+      $('ti_id').textContent = safe(r.batch?.id, '—');
+      $('ti_owner').textContent = [safe(r.batch?.current_owner_name,'—'), safe(r.batch?.current_owner_company,''), safe(r.batch?.current_owner_phone,'')].filter(Boolean).join(', ');
+      $('ti_price').textContent = moneyBDT(Number(r.batch?.product_price || 0));
+
+      if (r.anchored) {
+        $('t_badge').textContent='anchored ✓'; $('t_badge').className='badge ok';
+        $('ti_anchor').textContent = `${r.anchored_day} | ${r.root} | tx ${r.tx_hash || '—'}`;
+      } else {
+        $('t_badge').textContent='not anchored'; $('t_badge').className='badge warn';
+        $('ti_anchor').textContent = `${r.anchored_day} not anchored`;
+      }
+
+      renderEvents($('t_events'), r.events);
+      $('t_link').href = `/view/${encodeURIComponent(id)}`;
+    } catch (e) {
+      $('t_raw').textContent = e.message;
+      $('t_badge').textContent='error'; $('t_badge').className='badge warn';
+    }
+  };
+
+  // Merkle
+  $('btnMerkle').onclick = async () => {
+    $('outMerkle').textContent = 'Computing…';
+    try {
+      const day = $('m_day').value.trim();
+      const r = await jpost('/anchor/daily', day ? { day } : {});
+      $('outMerkle').textContent = JSON.stringify(r, null, 2);
+    } catch (e) {
+      $('outMerkle').textContent = e.message;
+    }
+  };
+
+  // Public Viewer
+  function inViewMode(){ return location.pathname.startsWith('/view/'); }
+  async function openView(id){
+    if(!id) return alert('Enter a batch id');
+    try{
+      const r = await jget(`/timeline/${encodeURIComponent(id)}`);
+      $('v_json').href = `/timeline/${encodeURIComponent(id)}`;
+
+      $('v_info').style.display='grid';
+      $('vp').textContent = safe(r.batch?.product_name,'—');
+      $('vb').textContent = safe(r.batch?.id,'—');
+      $('vo').textContent = [safe(r.batch?.current_owner_name,'—'), safe(r.batch?.current_owner_company,''), safe(r.batch?.current_owner_phone,'')].filter(Boolean).join(', ');
+      $('vpr').textContent = moneyBDT(Number(r.batch?.product_price || 0));
+      $('va').textContent = r.anchored ? `Anchored ${r.anchored_day}` : `Not anchored (${r.anchored_day})`;
+
+      renderEvents($('v_list'), r.events);
+    }catch(e){
+      alert(e.message);
+    }
+  }
+  $('v_btn').onclick = () => openView($('v_id').value.trim());
+  $('v_copy').onclick = async () => {
+    const u = location.origin + '/view/' + encodeURIComponent($('v_id').value.trim());
+    await navigator.clipboard.writeText(u);
+    alert('Share link copied!');
+  };
+
+  // Boot
+  (function init(){
+    if (inViewMode()) {
+      $('admin').style.display='none';
+      $('viewer').style.display='block';
+      $('mode').textContent='viewer';
+      const id = decodeURIComponent(location.pathname.split('/').pop());
+      $('v_id').value = id;
+      openView(id);
+    } else {
+      $('admin').style.display='grid';
+      $('viewer').style.display='none';
+      $('mode').textContent='admin';
+    }
+  })();
+</script>
+</body>
+</html>
