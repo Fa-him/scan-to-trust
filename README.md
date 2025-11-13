@@ -2,7 +2,6 @@
 
 A lightweight supply-chain traceability app: create product batches, transfer custody with guarded handoffs, show public timelines via QR, and anchor daily Merkle roots (optional Ethereum on-chain).
 
-<video src="Video Demonstration.mp4" controls width="800" />
 
 
 ## Features
